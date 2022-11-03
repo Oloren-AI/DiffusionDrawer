@@ -26,5 +26,5 @@ def test_flow():
     
     model = GATv2Model(9)
     
-    trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
+    trainer = pl.Trainer(accelerator="auto", devices="-1", limit_train_batches=100, max_epochs=1)
     trainer.fit(model, train_loader, val_loader)

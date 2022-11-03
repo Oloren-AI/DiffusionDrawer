@@ -90,11 +90,11 @@ def main(args):
     setup_logging(args.loglevel)
     _logger.debug("Begin")
     
-    train_loader, val_loader, test_loader = get_dataloaders(n = 100)
+    train_loader, val_loader, test_loader = get_dataloaders()
     
     model = GATv2Model(9)
     
-    trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
+    trainer = pl.Trainer(accelerator = "auto", devices=-1, limit_train_batches=100, max_epochs=10)
     trainer.fit(model, train_loader, val_loader)
 
 def run():

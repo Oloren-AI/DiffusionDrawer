@@ -29,9 +29,9 @@ class Diffuser:
 		return self._sample(x, t)
 
 	def _sample(self, x: torch.Tensor, t: int):
-		alpha_bar = self.alpha_bars[t]
-		epsilon = torch.normal(0, 1, size=x.shape).float()
-		return epsilon, torch.sqrt(alpha_bar).float() * x + torch.sqrt(1 - alpha_bar).float() * epsilon
+		alpha_bar = torch.tensor(self.alpha_bars[t]).float().to(x.device)
+		epsilon = torch.normal(0, 1, size=x.shape).float().to(x.device)
+		return epsilon, torch.sqrt(alpha_bar) * x + torch.sqrt(1 - alpha_bar) * epsilon
 
 class LinearDiffuser(Diffuser):
     def __init__(self,*args, beta_lower: float = 10e-4, beta_upper: float = 0.02, **kwargs):
