@@ -56,4 +56,5 @@ MANIFEST
 tmp.ipynb
 data/dataset.pkl
 
-lightning_logs/
+lightning_logs/*
+lightning_logs
