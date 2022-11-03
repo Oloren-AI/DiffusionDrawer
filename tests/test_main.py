@@ -1,7 +1,10 @@
 import pytest
 import pickle
 
-from diffusiondrawer.dataset import load_directory
+import pytorch_lightning as pl
+
+from diffusiondrawer.dataset import load_directory, get_dataloaders
+from diffusiondrawer.model import GATv2Model
 
 __author__ = "davidzqhuang"
 __copyright__ = "davidzqhuang"
@@ -13,7 +16,15 @@ def test_load_directory():
     
 def test_training_step():
     """Test training_step"""
-    from diffusiondrawer.model import GATv2Model
     model = GATv2Model(9)
-    batch = pickle.load(open("tests/test_batch.pkl", "rb"))
-    model.training_step(batch, 0)
+    loader = pickle.load(open("tests/test_loader.pkl", "rb"))
+    trainer = pl.Trainer(max_epochs=1)
+    trainer.fit(model, loader)
+    
+def test_flow():
+    train_loader, val_loader, test_loader = get_dataloaders(n = 100)
+    
+    model = GATv2Model(9)
+    
+    trainer = pl.Trainer(limit_train_batches=100, max_epochs=1)
+    trainer.fit(model, train_loader, val_loader)

@@ -30,8 +30,8 @@ class Diffuser:
 
 	def _sample(self, x: torch.Tensor, t: int):
 		alpha_bar = self.alpha_bars[t]
-		epsilon = torch.normal(0, 1, size=x.shape)
-		return epsilon, torch.sqrt(alpha_bar) * x + torch.sqrt(1 - alpha_bar) * epsilon
+		epsilon = torch.normal(0, 1, size=x.shape).float()
+		return epsilon, torch.sqrt(alpha_bar).float() * x + torch.sqrt(1 - alpha_bar).float() * epsilon
 
 class LinearDiffuser(Diffuser):
     def __init__(self,*args, beta_lower: float = 10e-4, beta_upper: float = 0.02, **kwargs):
@@ -55,9 +55,14 @@ class GATv2Model(pl.LightningModule):
 		self.heads = heads
 		self.conv1 = GATv2Conv(feature_channels + 2, self.hidden_channels, edge_dim = 3, heads = self.heads)
 		self.conv2 = GATv2Conv(self.hidden_channels * self.heads, 2, edge_dim = 3, heads = 1)
+  
+		self.loss = nn.MSELoss()
         
 	def forward(self, data):
 		x, edge_index, edge_attr, = data.x, data.edge_index, data.edge_attrs
+		x = x.float()
+		edge_attr = edge_attr.float()
+  
 		x = self.conv1(x, edge_index, edge_attr)
 		x = F.relu(x)
 		x = self.conv2(x, edge_index, edge_attr)
@@ -69,21 +74,28 @@ class GATv2Model(pl.LightningModule):
 
 	def training_step(self, batch, batch_idx):
 		x, edge_index, edge_attr, = batch.x, batch.edge_index, batch.edge_attr
+		x = x.float()
+		edge_attr = edge_attr.float()
+  
   		# apply the forward process to x
 		x_, epsilon = self.diffuser.sample(x[:, -2:])
 		x[:, -2:] = x_
-		x = x.float()
+
 		x = self.conv1(x, edge_index, edge_attr)
 		x = F.relu(x)
 		x = self.conv2(x, edge_index, edge_attr)
 
 		loss = F.mse_loss(x, epsilon)
+  
 		self.log('train_loss', loss)
+  
 		return loss
 
 	def validation_step(self, batch, batch_idx):
 		x, edge_index, edge_attr, = batch.x, batch.edge_index, batch.edge_attr
-
+		x = x.float()
+		edge_attr = edge_attr.float()
+  
   		# apply the forward process to x
 		x_, epsilon = self.diffuser.sample(x[:, -2:])
 		x[:, -2:] = x_
@@ -93,4 +105,5 @@ class GATv2Model(pl.LightningModule):
 		x = self.conv2(x, edge_index, edge_attr)
 
 		loss = F.mse_loss(x, epsilon)
+  
 		self.log('train_loss', loss)
