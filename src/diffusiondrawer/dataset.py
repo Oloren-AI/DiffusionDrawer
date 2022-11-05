@@ -17,16 +17,24 @@ from ogb.utils.features import atom_to_feature_vector, bond_to_feature_vector
 from torch_geometric.data import Data
 from torch_geometric.data import DataLoader
 
-
 def mol_to_data(mol):
     
     # atoms
     atom_features_list = []
     for i in range(mol.GetNumAtoms()):
         atom = mol.GetAtomWithIdx(i)
-        pos = mol.GetConformer().GetPositions()[i]
-        atom_features_list.append(np.concatenate([atom_to_feature_vector(atom), [pos[0]/12, pos[1]/8]]))
+        num_conf = mol.GetNumConformers()
+        if num_conf > 0:
+            pos = mol.GetConformer(num_conf-1).GetPositions()[i]
+            pos_vec = [pos[0], pos[1]]
+        else:
+            pos_vec = [0, 0]
+        atom_features_list.append(np.concatenate([atom_to_feature_vector(atom), pos_vec]))
     x = np.array(atom_features_list)
+    max_pos = np.max(x[:, -2:])
+    min_pos = np.min(x[:, -2:])
+    x[:, -2:] = (x[:, -2:] - min_pos) / (max_pos - min_pos)
+    x[:, -2:] = x[:, -2:]
     
     # bonds
     if len(mol.GetBonds()) > 0:  # mol has bonds

@@ -72,7 +72,7 @@ def setup_logging(loglevel):
     )
 
 from diffusiondrawer.dataset import get_dataloaders
-from diffusiondrawer.model import GATv2Model
+from diffusiondrawer.model import GATv2Model, LinearDiffuser
 
 import pytorch_lightning as pl
 
@@ -92,9 +92,14 @@ def main(args):
     
     train_loader, val_loader, test_loader = get_dataloaders()
     
-    model = GATv2Model(9)
+    model = GATv2Model(9, hidden_channels=64, heads=8,
+                       diffuser = LinearDiffuser(1000, beta_lower = 1e-3, beta_upper =1e-2))
     
-    trainer = pl.Trainer(accelerator = "auto", devices=-1, limit_train_batches=100, max_epochs=10)
+    trainer = pl.Trainer(accelerator = "auto", 
+                         devices=-1, 
+                         auto_lr_find=True, 
+                         auto_scale_batch_size="power",
+                         max_epochs=200)
     trainer.fit(model, train_loader, val_loader)
 
 def run():

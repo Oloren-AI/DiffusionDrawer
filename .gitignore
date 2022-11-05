@@ -58,3 +58,5 @@ data/dataset.pkl
 
 lightning_logs/*
 lightning_logs
+
+tmp_*.*
