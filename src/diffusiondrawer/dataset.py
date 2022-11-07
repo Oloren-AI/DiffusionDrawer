@@ -17,6 +17,8 @@ from ogb.utils.features import atom_to_feature_vector, bond_to_feature_vector
 from torch_geometric.data import Data
 from torch_geometric.data import DataLoader
 
+from tqdm import tqdm
+
 def mol_to_data(mol):
     
     # atoms
@@ -73,6 +75,30 @@ def mol_to_data(mol):
     data.y = torch.tensor([[pos[0]/12, pos[1]/8] for pos in positions])
     return data
 
+def load_sdf(sdf_file_name):
+    """
+    loads sdf file
+    
+    Returns:
+        List[Data]: list of Data objects
+    """
+    
+    fname = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), f"{sdf_file_name[:-4]}.pkl")
+    if os.path.exists(fname):
+        return pickle.load(open(fname, "rb"))
+    else:
+        sdf_file_name = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), sdf_file_name)
+        data_list = []
+        suppl = Chem.SDMolSupplier(sdf_file_name)
+        for mol in tqdm(suppl):
+            if not mol is None:
+                data = mol_to_data(mol)
+                data_list.append(data)
+            
+        pickle.dump(data_list, open(fname, "wb"))
+        
+        return data_list
+
 def load_directory(directory):
     """
     loads directory of mol files
@@ -80,17 +106,27 @@ def load_directory(directory):
     Returns:
         List[Data]: list of Data objects
     """
-    dir = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), directory)
-    data_list = []
-    for filename in os.listdir(dir):
-        try:
-            if filename.endswith(".mol") or filename.endswith(".MOL") or filename.endswith(".Mol"):
-                mol = Chem.MolFromMolFile(os.path.join(dir, filename))
-                data = mol_to_data(mol)
-                data_list.append(data)
-        except:
-            logger.info("error loading file: " + filename)
-    return data_list
+    fname = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), f"{directory}.pkl")
+    if os.path.exists(fname):
+        return pickle.load(open(fname, "rb"))
+    else:
+        dir = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), directory)
+        data_list = []
+        for filename in os.listdir(dir):
+            try:
+                if filename.endswith(".mol") or filename.endswith(".MOL") or filename.endswith(".Mol"):
+                    mol = Chem.MolFromMolFile(os.path.join(dir, filename))
+                    data = mol_to_data(mol)
+                    data_list.append(data)
+                elif filename.endswith(".sdf") or filename.endswith(".SDF") or filename.endswith(".Sdf"):
+                    suppl = Chem.SDMolSupplier(os.path.join(dir, filename))
+                    for mol in suppl:
+                        data = mol_to_data(mol)
+                        data_list.append(data)
+            except:
+                logger.info("error loading file: " + filename)
+        pickle.dump(data_list, open(fname, "wb"))
+        return data_list
 
 def load_dataset():
     """
@@ -114,14 +150,28 @@ def load_dataset():
         pickle.dump(out, open(fname, "wb"))
         
         return out
+def example1():
+    mol = Chem.MolFromMolFile("data/USPTO_mol_ref/US07314511-20080101-C00002.MOL")
 
-def get_dataloaders(batch_size=4, shuffle=False, num_workers=8, n = None):
-    data_list = load_dataset()
+def get_dataloaders(batch_size=4, shuffle=False, num_workers=8, n = None, small = False):
+    if small:
+        data_list = load_directory("USPTO_mol_ref")
+    else:
+        data_list = []
     
-    # shuffle data_list
-    random.shuffle(data_list)
-    if n is not None:
-        data_list = data_list[:n]
+        for dir in ["CLEF_mol_ref", "JPO_mol_ref", "UOB_mol_ref", "USPTO_mol_ref"]:
+            data_list += load_directory(dir)
+    
+        for sdf in ["PubChem_CP.sdf"]:
+            data_list += load_sdf(sdf)
+    
+        # shuffle data_list
+        random.seed(42)
+        random.shuffle(data_list)
+        if n is not None:
+            data_list = data_list[:n]
+        
+    print("Number of Molecules: " + str(len(data_list)))
     
     # random split data_list into train, val, test
     train = data_list[:int(len(data_list)*0.8)]

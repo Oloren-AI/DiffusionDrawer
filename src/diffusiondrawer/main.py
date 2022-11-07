@@ -92,14 +92,16 @@ def main(args):
     
     train_loader, val_loader, test_loader = get_dataloaders()
     
-    model = GATv2Model(9, hidden_channels=64, heads=8,
-                       diffuser = LinearDiffuser(1000, beta_lower = 1e-3, beta_upper =1e-2))
+    model = GATv2Model(hidden_channels=32, heads=4, num_layers=5,
+                       diffuser = LinearDiffuser(T = 1000, beta_lower = 1e-4, beta_upper =2e-2, strategy = "quadratic"),
+                       normalization = "graph")
     
     trainer = pl.Trainer(accelerator = "auto", 
                          devices=-1, 
                          auto_lr_find=True, 
-                         auto_scale_batch_size="power",
-                         max_epochs=200)
+                         max_epochs=1000,
+                         val_check_interval=10000,
+                         limit_val_batches=100)
     trainer.fit(model, train_loader, val_loader)
 
 def run():

@@ -60,3 +60,6 @@ lightning_logs/*
 lightning_logs
 
 tmp_*.*
+
+data/*
+data
