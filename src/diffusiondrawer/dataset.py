@@ -31,7 +31,9 @@ def mol_to_data(mol):
             pos_vec = [pos[0], pos[1]]
         else:
             pos_vec = [0, 0]
-        atom_features_list.append(np.concatenate([atom_to_feature_vector(atom), pos_vec]))
+        atom_vec = np.zeros(119)
+        atom_vec[atom.GetAtomicNum()] = 1
+        atom_features_list.append(np.concatenate([atom_vec, pos_vec]))
     x = np.array(atom_features_list)
     max_pos = np.max(x[:, -2:])
     min_pos = np.min(x[:, -2:])
@@ -46,7 +48,7 @@ def mol_to_data(mol):
             i = bond.GetBeginAtomIdx()
             j = bond.GetEndAtomIdx()
 
-            edge_feature = bond_to_feature_vector(bond)
+            edge_feature = [bond.GetBondTypeAsDouble(), bond.GetIsConjugated(), bond.IsInRing()]
 
             # add edges in both directions
             edges_list.append((i, j))
@@ -75,7 +77,7 @@ def mol_to_data(mol):
     data.y = torch.tensor([[pos[0]/12, pos[1]/8] for pos in positions])
     return data
 
-def load_sdf(sdf_file_name):
+def load_sdf(sdf_file_name,force=False):
     """
     loads sdf file
     
@@ -84,7 +86,7 @@ def load_sdf(sdf_file_name):
     """
     
     fname = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), f"{sdf_file_name[:-4]}.pkl")
-    if os.path.exists(fname):
+    if os.path.exists(fname) and not force:
         return pickle.load(open(fname, "rb"))
     else:
         sdf_file_name = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), sdf_file_name)
@@ -99,7 +101,7 @@ def load_sdf(sdf_file_name):
         
         return data_list
 
-def load_directory(directory):
+def load_directory(directory,force=False):
     """
     loads directory of mol files
     
@@ -107,7 +109,7 @@ def load_directory(directory):
         List[Data]: list of Data objects
     """
     fname = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), f"{directory}.pkl")
-    if os.path.exists(fname):
+    if os.path.exists(fname) and not force:
         return pickle.load(open(fname, "rb"))
     else:
         dir = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data/"), directory)
@@ -153,17 +155,17 @@ def load_dataset():
 def example1():
     mol = Chem.MolFromMolFile("data/USPTO_mol_ref/US07314511-20080101-C00002.MOL")
 
-def get_dataloaders(batch_size=4, shuffle=False, num_workers=8, n = None, small = False):
+def get_dataloaders(batch_size=4, shuffle=False, num_workers=8, n = None, small = False, force=False):
     if small:
-        data_list = load_directory("USPTO_mol_ref")
+        data_list = load_directory("USPTO_mol_ref",force=force)
     else:
         data_list = []
     
         for dir in ["CLEF_mol_ref", "JPO_mol_ref", "UOB_mol_ref", "USPTO_mol_ref"]:
-            data_list += load_directory(dir)
+            data_list += load_directory(dir,force=force)
     
         for sdf in ["PubChem_CP.sdf"]:
-            data_list += load_sdf(sdf)
+            data_list += load_sdf(sdf,force=force)
     
         # shuffle data_list
         random.seed(42)

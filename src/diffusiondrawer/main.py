@@ -77,24 +77,16 @@ from diffusiondrawer.model import GATv2Model, LinearDiffuser
 import pytorch_lightning as pl
 
 def main(args):
-    """Wrapper allowing :func:`fib` to be called with string arguments in a CLI fashion
-
-    Instead of returning the value from :func:`fib`, it prints the result to the
-    ``stdout`` in a nicely formatted message.
-
-    Args:
-      args (List[str]): command line parameters as list of strings
-          (for example  ``["--verbose", "42"]``).
-    """
     args = parse_args(args)
     setup_logging(args.loglevel)
     _logger.debug("Begin")
     
     train_loader, val_loader, test_loader = get_dataloaders()
     
-    model = GATv2Model(hidden_channels=32, heads=4, num_layers=5,
-                       diffuser = LinearDiffuser(T = 1000, beta_lower = 1e-4, beta_upper =2e-2, strategy = "quadratic"),
-                       normalization = "graph")
+    model = GATv2Model(feature_channels = 119, hidden_channels=32, heads=4, num_layers=5,
+                       diffuser = LinearDiffuser(T = 1000, beta_lower = 1e-4, beta_upper =2e-2, strategy = "power", power=4),
+                       normalization = "graph",
+                       learning_rate=1e-3)
     
     trainer = pl.Trainer(accelerator = "auto", 
                          devices=-1, 
@@ -102,6 +94,7 @@ def main(args):
                          max_epochs=1000,
                          val_check_interval=10000,
                          limit_val_batches=100)
+    
     trainer.fit(model, train_loader, val_loader)
 
 def run():
